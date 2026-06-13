@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Entry Sync — 실시간 변수/리스트 동기화 확장 프로그램</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans KR', sans-serif;
+      background: #0f0f1a;
+      color: #e0e0e0;
+      line-height: 1.7;
+    }
+    .container { max-width: 820px; margin: 0 auto; padding: 0 24px; }
+
+    /* Hero */
+    .hero {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      padding: 80px 0 60px;
+      text-align: center;
+      border-bottom: 1px solid #1e3a5f;
+    }
+    .hero h1 {
+      font-size: 2.6rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #64ffda, #48b1ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 12px;
+    }
+    .hero .subtitle {
+      font-size: 1.15rem;
+      color: #94a3b8;
+      max-width: 580px;
+      margin: 0 auto 28px;
+    }
+    .badge {
+      display: inline-block;
+      background: #1e3a5f;
+      color: #64ffda;
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 20px;
+    }
+    .badge.version { background: #2d1b69; color: #a78bfa; margin-left: 6px; }
+
+    /* Sections */
+    section { padding: 60px 0; }
+    section:nth-child(even) { background: #14142a; }
+    h2 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 24px;
+      color: #64ffda;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    h2 .icon { font-size: 1.3rem; }
+    p { color: #c0c8d4; margin-bottom: 16px; }
+    p strong { color: #e8edf5; }
+
+    /* Problem / Solution cards */
+    .card-grid { display: grid; gap: 16px; margin: 24px 0; }
+    .card {
+      background: #1c1c32;
+      border: 1px solid #2a2a4a;
+      border-radius: 12px;
+      padding: 20px 24px;
+      transition: border-color 0.2s;
+    }
+    .card:hover { border-color: #48b1ff; }
+    .card .card-title {
+      font-weight: 700;
+      color: #48b1ff;
+      margin-bottom: 6px;
+      font-size: 1.05rem;
+    }
+    .card p { margin-bottom: 0; font-size: 0.95rem; }
+
+    /* Feature list */
+    .features { display: grid; gap: 16px; }
+    .feature {
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      padding: 18px 0;
+      border-bottom: 1px solid #1e1e38;
+    }
+    .feature:last-child { border-bottom: none; }
+    .feature .icon {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, #1e3a5f, #2d1b69);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem; flex-shrink: 0;
+    }
+    .feature h3 { font-size: 1rem; color: #e0e0e0; margin-bottom: 4px; }
+    .feature p { font-size: 0.9rem; margin-bottom: 0; color: #94a3b8; }
+
+    /* Quick comparison table */
+    .comparison {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 0;
+      border: 1px solid #2a2a4a;
+      border-radius: 12px;
+      overflow: hidden;
+      margin: 24px 0;
+    }
+    .comparison > div { padding: 16px 20px; }
+    .comparison .header { 
+      background: #1c1c32; font-weight: 700; text-align: center;
+      border-bottom: 1px solid #2a2a4a;
+    }
+    .comparison .col { background: #14142a; }
+    .comparison .col:nth-child(2) { 
+      background: #0f1a2e; 
+      border-left: 1px solid #2a2a4a;
+      border-right: 1px solid #2a2a4a;
+    }
+    .comparison .cell { padding: 10px 0; font-size: 0.9rem; text-align: center; border-top: 1px solid #1e1e38; }
+    .comparison .cell:first-child { border-top: none; }
+    .check { color: #64ffda; }
+    .cross { color: #ef4444; }
+
+    /* Architecture */
+    .arch-diagram {
+      background: #1c1c32;
+      border: 1px solid #2a2a4a;
+      border-radius: 12px;
+      padding: 28px;
+      margin: 24px 0;
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      font-size: 0.8rem;
+      line-height: 1.5;
+      white-space: pre;
+      overflow-x: auto;
+      color: #94a3b8;
+    }
+    .arch-diagram .hl { color: #64ffda; }
+    .arch-diagram .hl2 { color: #48b1ff; }
+    .arch-diagram .hl3 { color: #a78bfa; }
+
+    /* Install */
+    .install-steps {
+      counter-reset: step;
+      display: grid; gap: 12px;
+      margin: 20px 0;
+    }
+    .install-step {
+      counter-increment: step;
+      display: flex; gap: 14px; align-items: flex-start;
+      padding: 14px 18px;
+      background: #1c1c32;
+      border-radius: 10px;
+      border: 1px solid #2a2a4a;
+    }
+    .install-step::before {
+      content: counter(step);
+      width: 26px; height: 26px;
+      background: #48b1ff;
+      color: #fff;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 0.85rem; flex-shrink: 0;
+    }
+    .install-step p { margin-bottom: 0; font-size: 0.95rem; }
+
+    /* Usage */
+    code {
+      background: #1a1a34;
+      color: #64ffda;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.85em;
+      border: 1px solid #2a2a4a;
+    }
+    .note {
+      background: #1a2e1a;
+      border: 1px solid #2a5a2a;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin: 16px 0;
+      font-size: 0.9rem;
+      color: #86efac;
+    }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      padding: 40px 0;
+      color: #4a5568;
+      font-size: 0.85rem;
+      border-top: 1px solid #1e1e38;
+    }
+    footer a { color: #48b1ff; text-decoration: none; }
+
+    @media (max-width: 600px) {
+      .hero h1 { font-size: 1.8rem; }
+      .comparison { grid-template-columns: 1fr; }
+      .comparison .col:nth-child(2) { border-left: none; border-right: none; border-top: 1px solid #2a2a4a; border-bottom: 1px solid #2a2a4a; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="container">
+    <div>
+      <span class="badge">Chrome Extension</span>
+      <span class="badge version">v0.1.0</span>
+    </div>
+    <h1>Entry Sync</h1>
+    <p class="subtitle">
+      엔트리(Entry)의 망가진 실시간 변수와 리스트를 대체하는<br />
+      강력한 실시간 동기화 확장 프로그램
+    </p>
+  </div>
+</section>
+
+<!-- Problem -->
+<section>
+  <div class="container">
+    <h2><span class="icon">⚠️</span> 문제: Entry의 실시간 변수가 자꾸 망가져요</h2>
+    <p>
+      엔트리(playentry.org)에서 프로젝트를 만들다 보면 <strong>실시간 변수</strong>와 
+      <strong>실시간 리스트</strong>가 제대로 동기화되지 않는 문제를 자주 겪게 됩니다.
+    </p>
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-title">🔄 변수 업데이트 누락</div>
+        <p>다른 탭이나 사용자에서 변경한 값이 반영되지 않거나, 아예 변수가 사라짐</p>
+      </div>
+      <div class="card">
+        <div class="card-title">🧩 리스트 깨짐</div>
+        <p>리스트 항목이 중복되거나, 순서가 뒤섞이거나, 아예 빈 배열로 초기화됨</p>
+      </div>
+      <div class="card">
+        <div class="card-title">🔌 연결 불안정</div>
+        <p>일정 시간이 지나면 동기화가 끊기고, 재연결이 제대로 되지 않음</p>
+      </div>
+      <div class="card">
+        <div class="card-title">🛑 제한된 확장성</div>
+        <p>Entry 자체 실시간 기능은 내부 구현이 복잡하고 디버깅이 어려움</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Solution -->
+<section>
+  <div class="container">
+    <h2><span class="icon">✅</span> 해결: Entry Sync</h2>
+    <p>
+      <strong>Entry Sync</strong>는 Entry의 깨지기 쉬운 실시간 변수/리스트 시스템을 
+      완전히 대체합니다. <strong>Supabase</strong>를 백엔드로 사용하여 안정적이고 
+      빠른 실시간 동기화를 제공합니다.
+    </p>
+    <div class="comparison">
+      <div class="col">
+        <div class="header">❌ Entry 기본 실시간</div>
+        <div class="cell cross">불안정한 연결</div>
+        <div class="cell cross">데이터 누락 빈번</div>
+        <div class="cell cross">리스트 동기화 불가</div>
+        <div class="cell cross">디버깅 어려움</div>
+        <div class="cell cross">재연결 안 됨</div>
+      </div>
+      <div class="col">
+        <div class="header">✅ Entry Sync</div>
+        <div class="cell check">안정적인 WebSocket 연결</div>
+        <div class="cell check">데이터 정합성 보장</div>
+        <div class="cell check">리스트 전체 동기화</div>
+        <div class="cell check">팝업으로 상태 확인 가능</div>
+        <div class="cell check">자동 재연결</div>
+      </div>
+      <div class="col">
+        <div class="header">💡 개선 효과</div>
+        <div class="cell check">연결 유지 시간 무제한</div>
+        <div class="cell check">Read-After-Write 검증</div>
+        <div class="cell check">push/setArray/insert 등 전체 연산 지원</div>
+        <div class="cell check">실시간 연결 상태 표시</div>
+        <div class="cell check">Offscreen 문서로 WebSocket 유지</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Features -->
+<section>
+  <div class="container">
+    <h2><span class="icon">✨</span> 주요 기능</h2>
+    <div class="features">
+      <div class="feature">
+        <div class="icon">🔁</div>
+        <div>
+          <h3>실시간 변수 동기화</h3>
+          <p><code>?!</code> 접두사가 붙은 변수의 값이 모든 탭과 사용자 간 실시간으로 동기화됩니다. 변경 즉시 Supabase DB에 저장되고 WebSocket으로 브로드캐스트됩니다.</p>
+        </div>
+      </div>
+      <div class="feature">
+        <div class="icon">📋</div>
+        <div>
+          <h3>실시간 리스트 동기화</h3>
+          <p><code>?!</code> 접두사가 붙은 리스트의 추가, 삭제, 삽입, 변경, 전체 설정 등 모든 연산을 실시간 동기화합니다. 리스트 연산은 직렬화되어 경합 조건(race condition)이 발생하지 않습니다.</p>
+        </div>
+      </div>
+      <div class="feature">
+        <div class="icon">🩺</div>
+        <div>
+          <h3>헬스체크 자동 복구</h3>
+          <p>Entry가 변수값을 0으로 초기화하는 버그를 자동 감지하여 랜덤 값으로 복구합니다. <code>?!</code> 변수 또는 리스트가 0이 되면 1초 이내에 감지하여 복원합니다.</p>
+        </div>
+      </div>
+      <div class="feature">
+        <div class="icon">🔐</div>
+        <div>
+          <h3>ALLOW+SEND 패턴</h3>
+          <p>변수/리스트 변경을 차단하지 않고 허용한 후 변경사항을 전송합니다. Entry의 정상적인 작동을 방해하지 않으면서 동기화가 이루어집니다.</p>
+        </div>
+      </div>
+      <div class="feature">
+        <div class="icon">🔄</div>
+        <div>
+          <h3>Read-After-Write 검증</h3>
+          <p>변경사항을 DB에 저장한 후 다시 읽어서(Read-After-Write) 실제 저장된 값으로 브로드캐스트합니다. 데이터 정합성을 보장합니다.</p>
+        </div>
+      </div>
+      <div class="feature">
+        <div class="icon">⚡</div>
+        <div>
+          <h3>Realtime WebSocket</h3>
+          <p>MV3 Offscreen Document에서 WebSocket을 유지하여 서비스 워커가 종료되어도 연결이 끊기지 않습니다. 브로드캐스트는 발신자 탭을 제외하고 전달되어 무한 루프를 방지합니다.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Architecture -->
+<section>
+  <div class="container">
+    <h2><span class="icon">🏗️</span> 아키텍처</h2>
+    <p>확장 프로그램의 데이터 흐름은 다음과 같습니다:</p>
+    <div class="arch-diagram">┌─────────────────────────────────────────────────────────────────┐
+│                   <span class="hl">Entry Runtime</span> (MAIN World)                    │
+│  ┌─────────────────────────────────────────────────────┐          │
+│  │  <span class="hl3">Variable.prototype.setValue</span>  ← monkey-patch          │          │
+│  │  <span class="hl3">ListVariable.prototype.*</span>      ← monkey-patch          │          │
+│  │       ↓ window.postMessage                              │          │
+│  └─────────────────────────────────────────────────────┘          │
+└─────────────────────────────────────────────────────────────────┘
+                            ↓
+┌─────────────────────────────────────────────────────────────────┐
+│                   <span class="hl2">Content Script</span> (Isolated World)               │
+│  Bridge: window.postMessage → chrome.runtime.sendMessage        │
+│  Inject inject.js into MAIN world via &lt;script&gt; tag               │
+└─────────────────────────────────────────────────────────────────┘
+                            ↓
+┌─────────────────────────────────────────────────────────────────┐
+│              <span class="hl">Service Worker</span> (background.js)                    │
+│  ┌─────────────────────────────────────────────────────┐          │
+│  │  VAR_CHANGED → Supabase REST API (upsert)            │          │
+│  │  LIST_CHANGED → Supabase REST API (updateListWithOp) │          │
+│  │  INIT_SYNC → fetchVars() + fetchLists()             │          │
+│  │  syncState (in-memory Map) for popup display         │          │
+│  └─────────────────────────────────────────────────────┘          │
+└─────────────────────────────────────────────────────────────────┘
+                            ↓
+┌─────────────────────────────────────────────────────────────────┐
+│              <span class="hl2">Offscreen Document</span> (offscreen.js)                 │
+│  ┌─────────────────────────────────────────────────────┐          │
+│  │  RealtimeClient (WebSocket to Supabase)               │          │
+│  │  var:update / list:update broadcast                   │          │
+│  │  _senderTabId로 발신자 제외 전달                       │          │
+│  └─────────────────────────────────────────────────────┘          │
+└─────────────────────────────────────────────────────────────────┘</div>
+
+    <div class="note">
+      <strong>핵심 원칙:</strong> Supabase가 단일 진실 공급원(SSOT)입니다. 모든 데이터는 Supabase PostgreSQL에 저장되고, 변경사항은 Realtime WebSocket으로 전파됩니다.
+    </div>
+  </div>
+</section>
+
+<!-- Usage -->
+<section>
+  <div class="container">
+    <h2><span class="icon">📖</span> 사용 방법</h2>
+    
+    <h3 style="color:#48b1ff; margin-bottom:12px; font-size:1rem;">설치</h3>
+    <div class="install-steps">
+      <div class="install-step"><p>Chrome 웹 스토어에서 <strong>Entry Sync</strong>를 설치합니다.</p></div>
+      <div class="install-step"><p><code>https://playentry.org</code>에서 엔트리 프로젝트를 엽니다.</p></div>
+      <div class="install-step"><p>변수 또는 리스트 이름 앞에 <code>?!</code>를 붙입니다 (예: <code>?!score</code>, <code>?!items</code>).</p></div>
+      <div class="install-step"><p>여러 탭이나 다른 사용자와 동일한 프로젝트를 열면 자동으로 실시간 동기화됩니다.</p></div>
+    </div>
+
+    <h3 style="color:#48b1ff; margin:24px 0 12px; font-size:1rem;">변수명 규칙</h3>
+    <div class="card-grid" style="grid-template-columns:1fr 1fr;">
+      <div class="card">
+        <div class="card-title">✅ 동기화 대상</div>
+        <p><code>?!score</code>, <code>?!hp</code>, <code>?!items</code>, <code>?!message</code><br/>
+        <code>?!</code>로 시작하는 이름 → 실시간 동기화</p>
+      </div>
+      <div class="card">
+        <div class="card-title">❌ 동기화 제외</div>
+        <p><code>score</code>, <code>hp</code>, <code>temp</code><br/>
+        <code>?!</code>가 없는 일반 이름 → 동기화 안 됨</p>
+      </div>
+    </div>
+
+    <div class="note">
+      <strong>참고:</strong> <code>?!</code> 변수/리스트가 <strong>0</strong>이 되면 헬스체크가 자동으로 감지하여 랜덤 값(1000~9999)으로 복구합니다. 이는 Entry가 변수를 0으로 초기화하는 버그를 우회하기 위한 것입니다.
+    </div>
+
+    <h3 style="color:#48b1ff; margin:24px 0 12px; font-size:1rem;">지원 연산</h3>
+
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+      <div class="card">
+        <div class="card-title">변수</div>
+        <p><code>setValue</code><br/></p>
+      </div>
+      <div class="card">
+        <div class="card-title">리스트</div>
+        <p><code>appendValue</code>, <code>deleteValue</code>, <code>insertValue</code>, <code>replaceValue</code>, <code>setArray</code></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Status -->
+<section>
+  <div class="container">
+    <h2><span class="icon">📊</span> 팝업 상태 확인</h2>
+    <p>
+      확장 프로그램 아이콘을 클릭하면 현재 동기화 상태와 <code>?!</code> 변수/리스트 목록을 
+      실시간으로 확인할 수 있습니다. 연결 상태(Connected/Disconnected)와 각 변수의 
+      현재값, 리스트의 항목 수가 표시됩니다.
+    </p>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer>
+  <div class="container">
+    <p>
+      <a href="https://github.com/good-bad-code/entry-sync-extension" target="_blank">GitHub</a>
+      &nbsp;·&nbsp;
+      <a href="./privacy/" target="_blank">개인정보처리방침</a>
+    </p>
+    <p style="margin-top:8px;">Entry Sync v0.1.0 — Chrome Extension</p>
+  </div>
+</footer>
+
+</body>
+</html>
