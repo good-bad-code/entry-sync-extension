@@ -113,8 +113,7 @@ Entry Runtime (playentry.org 페이지, MAIN world)
 
 개인정보처리방침에 관한 문의 사항은 아래 연락처로 보내주시기 바랍니다.
 
-- **이메일**: [이메일 주소를 입력해주세요]
-- **GitHub**: [GitHub 저장소 URL을 입력해주세요]
+- **이메일**: syho2058@gmail.com
 
 ---
 
