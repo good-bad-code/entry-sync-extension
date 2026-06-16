@@ -51,6 +51,8 @@ let applyingRemoteList = false;
 let syncBlockCount = 0;
 const pendingUpdates: Array<any> = [];
 let initialized = false; // INIT_SYNC_RESULT 수신 전 setValue 메시지 차단
+let dbSnapshot: Map<string, any> | null = null;
+let stabilizing = false;
 
 function hookEntryEvents(Entry: any) {
   Entry.addEventListener('blockExecute', (blockView: any) => {
@@ -147,6 +149,8 @@ function hookVariableSetValue(Entry: any) {
     if (isSyncVariable(this) && isGlobalVariable(this)) {
       if (!initialized) {
         logVarChange('SKIP:!initialized', this.name_, value);
+      } else if (stabilizing) {
+        logVarChange('SKIP:stabilizing', this.name_, value);
       } else if (applyingRemoteVar) {
         logVarChange('SKIP:applyingRemoteVar', this.name_, value);
       } else {
@@ -290,6 +294,59 @@ function patchExistingVariables(Entry: any) {
   }
 }
 
+function startStabilization(Entry: any, durationMs: number) {
+  if (stabilizing) return;
+  stabilizing = true;
+  const startTime = Date.now();
+  log(`Stabilization started for ${durationMs}ms with ${dbSnapshot?.size || 0} tracked entries`);
+
+  const timer = setInterval(() => {
+    if (Date.now() - startTime > durationMs) {
+      clearInterval(timer);
+      stabilizing = false;
+      dbSnapshot = null;
+      initialized = true;  // NOW it's safe to send to DB
+      log('Stabilization complete — DB values locked in, initialized=true');
+      return;
+    }
+
+    // Check all sync variables
+    for (const v of (Entry.variableContainer?.variables_ || [])) {
+      if (!isSyncVariable(v) || !isGlobalVariable(v)) continue;
+      if (v.name_ === PREFIX) continue;
+      const snapshotVal = dbSnapshot?.get(v.name_);
+      if (snapshotVal !== undefined && v.value_ !== snapshotVal) {
+        // Entry overwrote our DB value — re-apply
+        logVarChange('STABILIZE:re-apply', v.name_, snapshotVal);
+        v.value_ = snapshotVal;
+        if (v.view_?.updateView) v.view_.updateView();
+      }
+    }
+
+    // Check all sync lists
+    for (const l of (Entry.variableContainer?.lists_ || [])) {
+      if (!isSyncVariable(l) || !isGlobalVariable(l)) continue;
+      if (l.name_ === PREFIX) continue;
+      const snapshotVal = dbSnapshot?.get(l.name_);
+      if (snapshotVal !== undefined) {
+        const currentArr = extractArray(l);
+        if (JSON.stringify(currentArr) !== JSON.stringify(snapshotVal)) {
+          logListChange('STABILIZE:re-apply', l.name_, 'setArray', [snapshotVal]);
+          const wrapped = (snapshotVal as unknown[]).map((v: unknown) => ({ data: v }));
+          l.array_ = wrapped;
+          if (l.view_) {
+            if (typeof l.view_.updateView === 'function') l.view_.updateView();
+            if (typeof l.view_.setList === 'function') l.view_.setList(wrapped);
+          }
+        }
+      }
+    }
+
+    (Entry as any).requestUpdate = true;
+    if (Entry.stage?.update) Entry.stage.update();
+  }, 50);
+}
+
 function processPendingUpdates(Entry: any) {
   if (pendingUpdates.length === 0) return;
   const updates = pendingUpdates.splice(0);
@@ -349,7 +406,20 @@ function processPendingUpdates(Entry: any) {
           if (Entry.stage?.update) Entry.stage.update();
           notifyParent('list', list.name, list.array);
         }
-      } finally { applyingRemoteList = false; applyingRemoteVar = false; }
+        // Save DB snapshot for stabilization
+        dbSnapshot = new Map<string, any>();
+        for (const [name, value] of Object.entries(update.vars || {})) {
+          if (name !== PREFIX) dbSnapshot.set(name, value);
+        }
+        for (const list of update.lists || []) {
+          if (list.name !== PREFIX) dbSnapshot.set(list.name, list.array);
+        }
+      } finally {
+        applyingRemoteList = false;
+        applyingRemoteVar = false;
+        // initialized = true; — defer to stabilization
+        startStabilization(Entry, 3000);
+      }
     }
   }
 }
@@ -461,13 +531,22 @@ function listenForRemoteUpdates(Entry: any) {
           if (Entry.stage?.update) Entry.stage.update();
           notifyParent('list', list.name, list.array);
         }
+        // Save DB snapshot for stabilization
+        dbSnapshot = new Map<string, any>();
+        for (const [name, value] of Object.entries(msg.vars || {})) {
+          if (name !== PREFIX) dbSnapshot.set(name, value);
+        }
+        for (const list of msg.lists || []) {
+          if (list.name !== PREFIX) dbSnapshot.set(list.name, list.array);
+        }
         // Final render trigger — ensures display updates even if no vars/lists were found
         (Entry as any).requestUpdate = true;
         if (Entry.stage?.update) Entry.stage.update();
       } finally {
         applyingRemoteList = false;
         applyingRemoteVar = false;
-        initialized = true; // ← ADD THIS LINE
+        // initialized = true; — defer to stabilization
+        startStabilization(Entry, 3000);
       }
     }
   });
